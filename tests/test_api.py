@@ -100,3 +100,37 @@ def test_get_books_with_data(client):
     assert len(data["data"]) == 5
     assert data["data"][0]["title"] == "Book 6"
     assert data["data"][4]["title"] == "Book 10"
+
+
+def test_get_book_success(client):
+    """Test retrieving an existing book by ID."""
+    create_response = client.post("/api/v1/books/", json={**TEST_BOOK_DATA})
+
+    assert create_response.status_code == status.HTTP_201_CREATED
+    book_id = create_response.json()["data"]["id"]
+
+    # Retrieve the book
+    response = client.get(f"/api/v1/books/{book_id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+    assert data["success"] is True
+    assert data["message"] == "Book retrieved successfully"
+    assert data["data"]["id"] == book_id
+    assert data["data"]["title"] == "Test Book"
+    assert data["data"]["author"] == "Test Author"
+    assert data["data"]["published_year"] == 2023
+    assert data["data"]["summary"] == "A test book for integration testing"
+
+
+def test_get_book_not_found(client):
+    """Test retrieving a non-existent book by ID."""
+    response = client.get("/api/v1/books/999999")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    data = response.json()["detail"]
+    assert data["success"] is False
+    assert data["message"] == "Book not found"
+    assert "errors" in data
+    assert len(data["errors"]) > 0
+    assert data["errors"][0]["message"] == "Book not found"
