@@ -141,3 +141,22 @@ def test_get_books_with_pagination(db_session: Session):
     # Test with skip beyond available
     books = crud.get_books(db_session, skip=15, limit=5)
     assert len(books) == 0
+
+def test_get_book_success(db_session: Session):
+    """Test retrieving an existing book by ID."""
+    # Create a test book
+    test_book = BookCreate(**TEST_BOOK_DATA)
+    created_book = crud.create_book(db_session, book=test_book)
+
+    # Retrieve the book by ID
+    result = crud.get_book(db_session, book_id=created_book.id)
+
+    # Verify the retrieved book matches the created book
+    assert result is not None
+    assert result.id == created_book.id
+
+def test_get_book_not_found(db_session: Session):
+    """Test retrieving a non-existent book by ID."""
+    # Test with a non-existent ID
+    result = crud.get_book(db_session, book_id=9999)
+    assert result is None
