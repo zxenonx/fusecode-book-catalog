@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.orm import Session
 
 from . import crud
@@ -57,6 +57,43 @@ async def get_books(
     except Exception as e:
         return ApiResponse.error_response(
             message="Failed to retrieve books",
+            errors=[{"message": str(e)}],
+            status_code=500
+        )
+
+@router.get("/books/{book_id}", response_model=ApiResponse[schemas.Book],
+            responses={
+                404: {
+            "description": "Book not found"}
+            })
+async def get_book(book_id: int, db: Session = Depends(get_db)):
+    """Retrieves a specific book by its ID.
+
+    Args:
+        book_id (int): The ID of the book to retrieve.
+        db (Session): Db session dependency.
+
+    Returns:
+        ApiResponse[schemas.Book]: Response containing the book or error details.
+    """
+    try:
+        book = crud.get_book(db, book_id=book_id)
+        if not book:
+            response = ApiResponse.not_found_response(resource="Book")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=response.model_dump()
+            )
+            
+        return ApiResponse.success_response(
+            message="Book retrieved successfully",
+            data=book
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        return ApiResponse.error_response(
+            message="Failed to retrieve book",
             errors=[{"message": str(e)}],
             status_code=500
         )
