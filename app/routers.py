@@ -9,7 +9,7 @@ from .schemas.response import ApiResponse
 router = APIRouter()
 
 @router.post("/books/", response_model=ApiResponse[schemas.Book], status_code=201)
-async def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
+def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
     """Creates a new book in the catalog.
 
     Args:
@@ -66,7 +66,7 @@ async def get_books(
                 404: {
             "description": "Book not found"}
             })
-async def get_book(book_id: int, db: Session = Depends(get_db)):
+def get_book(book_id: int, db: Session = Depends(get_db)):
     """Retrieves a specific book by its ID.
 
     Args:
@@ -96,4 +96,37 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
             message="Failed to retrieve book",
             errors=[{"message": str(e)}],
             status_code=500
+        )
+
+@router.patch("/books/{book_id}", response_model=ApiResponse[schemas.Book], status_code=200)
+def update_book(book_id: int, book: schemas.BookUpdate, db: Session = Depends(get_db)):
+    """Updates an existing book in the catalog.
+
+    Args:
+        book_id (int): The ID of the book to update.
+        book (schemas.BookUpdate): A Pydantic model containing the updated book data.
+        db (Session): Db session dependency.
+
+    Returns:
+        ApiResponse[schemas.Book]: Response containing the updated book or error details.
+    """
+    try:
+        db_book = crud.update_book(db=db, book_id=book_id, book=book)
+        if not db_book:
+            response = ApiResponse.not_found_response(resource="Book")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=response.model_dump()
+            )
+        return ApiResponse.success_response(
+            message="Book updated successfully",
+            data=db_book
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        return ApiResponse.error_response(
+            message="Failed to update book",
+            errors=[{"message": str(e)}],
+            status_code=400
         )
