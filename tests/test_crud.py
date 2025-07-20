@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app import crud
+from app import crud, models
 from app.schemas.schemas import BookCreate, BookUpdate
 
 # Test data
@@ -85,7 +85,7 @@ def test_create_book_edge_case_year(db_session: Session):
     book = crud.create_book(db_session, book=book_data)
     assert book.published_year == current_year
 
-    # Test with future year raises validation error
+    # Test with future year
     future_year = datetime.now().year + 1
     with pytest.raises(ValueError) as exc_info:
         book_data = BookCreate(
@@ -114,7 +114,7 @@ def test_get_books_with_pagination(db_session: Session):
             published_year=2000 + i,
             summary=f"Summary {i}"
         )
-        for i in range(1, 11)  # Create 10 test books
+        for i in range(1, 11)
     ]
     
     # Add books to db
@@ -151,7 +151,6 @@ def test_get_book_success(db_session: Session):
     # Retrieve the book by ID
     result = crud.get_book(db_session, book_id=created_book.id)
 
-    # Verify the retrieved book matches the created book
     assert result is not None
     assert result.id == created_book.id
 
@@ -225,3 +224,31 @@ def test_update_book_partial_data(db_session: Session):
     assert updated_book.title == "New Title Only"
     assert updated_book.author == "Test Author"
     assert updated_book.published_year == 2023
+
+
+def test_delete_book_success(db_session: Session):
+    """Test successfully deleting an existing book."""
+    # Create a book
+    test_book = BookCreate(**TEST_BOOK_DATA)
+    created_book = crud.create_book(db_session, book=test_book)
+    
+    # Delete the book
+    deleted_book = crud.delete_book(db=db_session, book_id=created_book.id)
+
+    assert deleted_book is not None
+    assert deleted_book.id == created_book.id
+    assert deleted_book.title == created_book.title
+    assert deleted_book.author == created_book.author
+    
+    # Verify the book is no longer in the db
+    book_in_db = db_session.query(models.Book).filter(models.Book.id == created_book.id).first()
+    assert book_in_db is None
+
+
+def test_delete_book_not_found(db_session: Session):
+    """Test deleting a non-existent book returns None."""
+    # Delete a non-existent book
+    result = crud.delete_book(db=db_session, book_id=999999)
+
+    assert result is None
+
