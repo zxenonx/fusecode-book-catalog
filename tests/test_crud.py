@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app import crud
-from app.schemas.schemas import BookCreate
+from app.schemas.schemas import BookCreate, BookUpdate
 
 # Test data
 TEST_BOOK_DATA = {
@@ -160,3 +160,68 @@ def test_get_book_not_found(db_session: Session):
     # Test with a non-existent ID
     result = crud.get_book(db_session, book_id=9999)
     assert result is None
+
+
+def test_update_book_success(db_session: Session):
+    """Test updating an existing book with valid data."""
+    # Create a book
+    test_book = BookCreate(**TEST_BOOK_DATA)
+    created_book = crud.create_book(db_session, book=test_book)
+
+    update_data = {
+        "title": "Updated Title",
+        "author": "Updated Author",
+        "published_year": 2023,
+        "summary": "Updated summary"
+    }
+
+    # Perform update
+    updated_book = crud.update_book(
+        db=db_session,
+        book_id=created_book.id,
+        book=BookUpdate(**update_data)
+    )
+
+    # Verify the update
+    assert updated_book is not None
+    assert updated_book.id == created_book.id
+    assert updated_book.title == "Updated Title"
+    assert updated_book.author == "Updated Author"
+    assert updated_book.published_year == 2023
+    assert updated_book.summary == "Updated summary"
+
+
+def test_update_book_not_found(db_session: Session):
+    """Test updating a non-existent book."""
+    update_data = {
+        "title": "New Title"
+    }
+
+    #Update non-existent book
+    result = crud.update_book(
+        db=db_session,
+        book_id=999,
+        book=BookUpdate(**update_data)
+    )
+
+    assert result is None
+
+
+def test_update_book_partial_data(db_session: Session):
+    """Test updating only some fields of a book."""
+    # Create a book
+    test_book = BookCreate(**TEST_BOOK_DATA)
+    created_book = crud.create_book(db_session, book=test_book)
+
+    # Update only the title
+    updated_book = crud.update_book(
+        db=db_session,
+        book_id=created_book.id,
+        book=BookUpdate(title="New Title Only")
+    )
+
+    # Verify only the title was updated
+    assert updated_book is not None
+    assert updated_book.title == "New Title Only"
+    assert updated_book.author == "Test Author"
+    assert updated_book.published_year == 2023
