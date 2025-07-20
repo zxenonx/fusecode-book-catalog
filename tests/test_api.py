@@ -14,12 +14,11 @@ def test_create_book(client):
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     
-    # Check response structure
+    # Verify the response
     assert data["success"] is True
     assert "data" in data
     assert "id" in data["data"]
-    
-    # Check the returned data matches what we sent
+
     assert data["data"]["title"] == TEST_BOOK_DATA["title"]
     assert data["data"]["author"] == TEST_BOOK_DATA["author"]
     assert data["data"]["published_year"] == TEST_BOOK_DATA["published_year"]
@@ -33,9 +32,9 @@ def test_create_book_invalid_data(client):
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     data = response.json()
     
-    # Check error response structure
+    # Check error response
     assert "errors" in data
-    assert len(data["errors"]) > 0  # Should have validation errors
+    assert len(data["errors"]) > 0
 
 
 def test_get_books_empty(client):
@@ -44,13 +43,12 @@ def test_get_books_empty(client):
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     
-    # Check response structure
+    # Check response
     assert isinstance(data, dict)
     assert "data" in data
     assert isinstance(data["data"], list)
 
     assert len(data["data"]) == 0
-
 
 def test_get_books_with_data(client):
     """Test getting books when books exist in the db."""
@@ -78,12 +76,11 @@ def test_get_books_with_data(client):
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     
-    # Check response structure
+    # Check response
     assert isinstance(data, dict)
     assert "data" in data
     assert isinstance(data["data"], list)
-    
-    # Check we got the correct number of books
+
     assert len(data["data"]) == 5
     
     # Check the first book's data
@@ -234,3 +231,36 @@ def test_update_book_invalid_data(client):
 
     assert "errors" in data
     assert len(data["errors"]) >= 0
+
+
+def test_delete_book_success(client):
+    """Test successfully deleting an existing book."""
+    # Create a book to
+    create_response = client.post("/api/v1/books/", json=TEST_BOOK_DATA)
+    assert create_response.status_code == status.HTTP_201_CREATED
+    book_id = create_response.json()["data"]["id"]
+    
+    # Delete the book
+    response = client.delete(f"/api/v1/books/{book_id}")
+    
+    # Verify the response
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert not response.content
+    
+    # Verify the book was actually deleted from the db
+    get_response = client.get(f"/api/v1/books/{book_id}")
+    assert get_response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_delete_book_not_found(client):
+    """Test deleting a non-existent book returns 404."""
+    response = client.delete("/api/v1/books/999999")
+    
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    data = response.json()["detail"]
+
+    assert data["success"] is False
+    assert data["message"] == "Book not found"
+    assert "errors" in data
+    assert len(data["errors"]) > 0
+    assert data["errors"][0]["message"] == "Book not found"
